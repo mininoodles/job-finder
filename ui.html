@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Careers Finder</title>
+<style>
+:root{--bg:#f4f6f7;--card:#fff;--ink:#16222b;--mute:#5d6b76;--line:#d5dce1;--acc:#0b6e69;--accink:#fff;--warn:#9a5b00}
+@media (prefers-color-scheme:dark){:root{--bg:#0f171c;--card:#172229;--ink:#e6edf1;--mute:#93a4af;--line:#2a3a44;--acc:#4fc3bb;--accink:#07201e;--warn:#e0a458}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:28px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 24px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:20px}
+label{display:block;font-size:14px;font-weight:500;margin-bottom:12px}
+input[type=text],input[type=number],select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;margin-top:5px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.row{grid-template-columns:1fr}}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 14px}
+.checks label{display:inline-flex;gap:6px;align-items:center;font-weight:400;margin:0}
+fieldset{border:0;padding:0;margin:0 0 6px}legend{font-size:14px;font-weight:500;padding:0}
+button{font:inherit;font-weight:500;border-radius:6px;padding:10px 18px;cursor:pointer;border:1px solid var(--acc)}
+#go{background:var(--acc);color:var(--accink)}#adv{background:transparent;color:var(--acc);margin-right:8px}
+button:disabled{opacity:.6;cursor:wait}
+#status{color:var(--mute);font-size:14px;margin:0 0 16px}
+.job{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.job h3{margin:0;font-size:17px}.job h3 a{color:var(--ink)}
+.meta{color:var(--mute);font-size:14px;margin:2px 0 8px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:1px 9px;color:var(--mute)}
+.tag.new{border-color:var(--acc);color:var(--acc)}.tag.warn{color:var(--warn);border-color:var(--warn)}
+.why{font-size:13px;color:var(--mute);margin:0 0 10px}
+.apply{display:inline-block;background:var(--acc);color:var(--accink);padding:7px 14px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:500}
+.score{float:right;font-weight:600;color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<h1>Careers Finder</h1>
+<p class="sub">Live openings from careers pages and job portals, verified and ranked against what you want.</p>
+
+<form id="f" class="panel">
+  <div class="row">
+    <label>Role<input type="text" id="role" required placeholder="Product designer"></label>
+    <label>Location<input type="text" id="location" placeholder="London"></label>
+  </div>
+  <div id="advbox" hidden>
+    <div class="row">
+      <label>Keywords (comma separated)<input type="text" id="keywords" placeholder="figma, fintech"></label>
+      <label>Exclude words (comma separated)<input type="text" id="exclude" placeholder="contract, unpaid"></label>
+    </div>
+    <fieldset><legend>Seniority</legend>
+      <div class="checks" id="levels">
+        <label><input type="checkbox" value="intern"> Intern / grad</label>
+        <label><input type="checkbox" value="junior"> Junior</label>
+        <label><input type="checkbox" value="mid"> Mid</label>
+        <label><input type="checkbox" value="senior"> Senior</label>
+        <label><input type="checkbox" value="lead"> Lead / staff+</label>
+      </div></fieldset>
+    <fieldset><legend>Where to look</legend>
+      <div class="checks" id="sources">
+        <label><input type="checkbox" value="greenhouse" checked> Greenhouse</label>
+        <label><input type="checkbox" value="lever" checked> Lever</label>
+        <label><input type="checkbox" value="ashby" checked> Ashby</label>
+        <label><input type="checkbox" value="workable" checked> Workable</label>
+        <label><input type="checkbox" value="linkedin" checked> LinkedIn (public)</label>
+        <label><input type="checkbox" value="reed" checked> Reed</label>
+      </div></fieldset>
+    <div class="row">
+      <label>Posted within
+        <select id="max_age_days"><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option></select></label>
+      <label>Search country code (optional)<input type="text" id="country" maxlength="2" placeholder="GB"></label>
+    </div>
+    <div class="checks">
+      <label><input type="checkbox" id="visa"> I need visa sponsorship</label>
+      <label><input type="checkbox" id="remote_ok" checked> Include remote roles</label>
+      <label><input type="checkbox" id="agent_portals"> Also browse LinkedIn/Reed result pages with the Agent (slower)</label>
+    </div>
+    <label>Minimum match score (0 to 100)<input type="number" id="min_score" min="0" max="100" value="30"></label>
+  </div>
+  <button type="button" id="adv">Advanced options</button><button type="submit" id="go">Search</button>
+</form>
+
+<p id="status" role="status"></p>
+<div id="out"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const checked = id => [...document.querySelectorAll('#' + id + ' input:checked')].map(i => i.value);
+$('adv').onclick = () => { $('advbox').hidden = !$('advbox').hidden; };
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;   // textContent only: job data comes from the open web
+  return n;
+}
+
+function render(r) {
+  const card = el('div', 'job');
+  card.appendChild(el('span', 'score', r.score));
+  const h = el('h3'); h.appendChild(el('span', '', r.title)); card.appendChild(h);
+  card.appendChild(el('div', 'meta', [r.company, r.location, r.posted].filter(Boolean).join('  |  ')));
+  const tags = el('div', 'tags');
+  if (r.new) tags.appendChild(el('span', 'tag new', 'new'));
+  if (r.salary) tags.appendChild(el('span', 'tag', r.salary));
+  if (r.work_mode) tags.appendChild(el('span', 'tag', r.work_mode));
+  if (r.level) tags.appendChild(el('span', 'tag', r.level));
+  if (r.visa === 'yes') tags.appendChild(el('span', 'tag', 'visa: mentioned'));
+  if (r.visa === 'unknown') tags.appendChild(el('span', 'tag', 'visa: not stated'));
+  tags.appendChild(el('span', r.verified ? 'tag' : 'tag warn', r.verified ? 'link verified live' : 'not opened'));
+  tags.appendChild(el('span', 'tag', r.sources.join(' + ')));
+  card.appendChild(tags);
+  card.appendChild(el('p', 'why', r.reasons.join('. ') + '.'));
+  if (/^https?:\/\//.test(r.url)) {
+    const a = el('a', 'apply', 'View and apply');
+    a.href = r.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    card.appendChild(a);
+  }
+  return card;
+}
+
+$('f').onsubmit = async e => {
+  e.preventDefault();
+  const body = {
+    role: $('role').value, location: $('location').value,
+    keywords: $('keywords').value, exclude: $('exclude').value,
+    levels: checked('levels'), sources: checked('sources'),
+    max_age_days: $('max_age_days').value, country: $('country').value.toUpperCase(),
+    visa: $('visa').checked, remote_ok: $('remote_ok').checked,
+    agent_portals: $('agent_portals').checked, min_score: $('min_score').value
+  };
+  $('go').disabled = true; $('out').replaceChildren();
+  $('status').textContent = 'Searching, opening postings and ranking. This takes 20 to 90 seconds.';
+  try {
+    const res = await (await fetch('/api/search', {method: 'POST', body: JSON.stringify(body)})).json();
+    if (res.error) { $('status').textContent = 'Error: ' + res.error; return; }
+    const s = res.stats, c = s.endpoint_calls;
+    $('status').textContent = res.results.length + ' matches from ' + s.raw_results + ' raw results (' +
+      s.after_dedupe + ' after dedupe, ' + s.dropped.dead + ' dead links removed). TinyFish calls: Search ' +
+      c.search + ', Fetch ' + c.fetch + ', Agent ' + c.agent + '. ' + s.seconds + 's.';
+    if (!res.results.length) $('out').appendChild(el('p', 'sub', 'Nothing matched. Try fewer filters or a lower minimum score.'));
+    res.results.forEach(r => $('out').appendChild(render(r)));
+  } catch (err) { $('status').textContent = 'Request failed: ' + err.message; }
+  finally { $('go').disabled = false; }
+};
+</script>
+</body>
+</html>
